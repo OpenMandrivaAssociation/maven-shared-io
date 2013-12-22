@@ -1,0 +1,665 @@
+From fb5a20cb3ee156dc7a3c4e7ff0dbd501e217ea67 Mon Sep 17 00:00:00 2001
+From: Mikolaj Izdebski <mizdebsk@redhat.com>
+Date: Fri, 30 Aug 2013 09:45:04 +0200
+Subject: [PATCH] Update to easymock 3.2
+
+---
+ pom.xml                                            |  13 +-
+ .../org/apache/maven/shared/io/MockManager.java    |  23 ++--
+ .../io/download/DefaultDownloadManagerTest.java    | 104 ++++----------
+ .../io/location/ArtifactLocatorStrategyTest.java   | 153 ++++++---------------
+ .../maven/shared/io/location/LocatorTest.java      |  19 +--
+ 5 files changed, 93 insertions(+), 219 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index 0f26ad8..c00fe34 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -80,9 +80,9 @@
+     </dependency>
+ 
+     <dependency>
+-      <groupId>easymock</groupId>
++      <groupId>org.easymock</groupId>
+       <artifactId>easymock</artifactId>
+-      <version>1.2_Java1.3</version>
++      <version>3.2</version>
+       <scope>test</scope>
+     </dependency>
+   </dependencies>
+@@ -90,6 +90,15 @@
+   <build>
+     <plugins>
+       <plugin>
++        <artifactId>maven-compiler-plugin</artifactId>
++        <version>3.1</version>
++        <configuration>
++          <source>1.5</source>
++          <target>1.5</target>
++        </configuration>
++      </plugin>
++
++      <plugin>
+         <artifactId>maven-surefire-plugin</artifactId>
+         <version>2.3</version>
+         <configuration>
+diff --git a/src/test/java/org/apache/maven/shared/io/MockManager.java b/src/test/java/org/apache/maven/shared/io/MockManager.java
+index 93c2c5d..56e0b8c 100644
+--- a/src/test/java/org/apache/maven/shared/io/MockManager.java
++++ b/src/test/java/org/apache/maven/shared/io/MockManager.java
+@@ -20,38 +20,35 @@ package org.apache.maven.shared.io;
+  */
+ 
+ import java.util.ArrayList;
+-import java.util.Iterator;
+ import java.util.List;
+ 
+-import org.easymock.MockControl;
++import org.easymock.EasyMock;
+ 
+ public class MockManager
+ {
+ 
+-    private List mockControls = new ArrayList();
++    private List<Object> mocks = new ArrayList<Object>();
+ 
+-    public void add( MockControl control )
++    public <T> T add( Class<T> clazz )
+     {
+-        mockControls.add( control );
++        T mock = EasyMock.createMock( clazz );
++        mocks.add( mock );
++        return mock;
+     }
+ 
+     public void replayAll()
+     {
+-        for ( Iterator it = mockControls.iterator(); it.hasNext(); )
++        for ( Object mock : mocks )
+         {
+-            MockControl control = (MockControl) it.next();
+-
+-            control.replay();
++            EasyMock.replay( mock );
+         }
+     }
+ 
+     public void verifyAll()
+     {
+-        for ( Iterator it = mockControls.iterator(); it.hasNext(); )
++        for ( Object mock : mocks )
+         {
+-            MockControl control = (MockControl) it.next();
+-
+-            control.verify();
++            EasyMock.verify( mock );
+         }
+     }
+ 
+diff --git a/src/test/java/org/apache/maven/shared/io/download/DefaultDownloadManagerTest.java b/src/test/java/org/apache/maven/shared/io/download/DefaultDownloadManagerTest.java
+index 218ffc8..f99bccb 100644
+--- a/src/test/java/org/apache/maven/shared/io/download/DefaultDownloadManagerTest.java
++++ b/src/test/java/org/apache/maven/shared/io/download/DefaultDownloadManagerTest.java
+@@ -40,7 +40,7 @@ import org.apache.maven.wagon.events.TransferListener;
+ import org.apache.maven.wagon.proxy.ProxyInfo;
+ import org.apache.maven.wagon.repository.Repository;
+ import org.codehaus.plexus.PlexusTestCase;
+-import org.easymock.MockControl;
++import static org.easymock.EasyMock.*;
+ 
+ public class DefaultDownloadManagerTest
+     extends PlexusTestCase
+@@ -48,12 +48,8 @@ public class DefaultDownloadManagerTest
+ 
+     private MockManager mockManager;
+ 
+-    private MockControl wagonManagerControl;
+-
+     private WagonManager wagonManager;
+ 
+-    private MockControl wagonControl;
+-
+     private Wagon wagon;
+ 
+     public void setUp()
+@@ -63,15 +59,9 @@ public class DefaultDownloadManagerTest
+ 
+         mockManager = new MockManager();
+ 
+-        wagonManagerControl = MockControl.createControl( WagonManager.class );
+-        mockManager.add( wagonManagerControl );
+-
+-        wagonManager = (WagonManager) wagonManagerControl.getMock();
++        wagonManager = mockManager.add( WagonManager.class );
+ 
+-        wagonControl = MockControl.createControl( Wagon.class );
+-        mockManager.add( wagonControl );
+-
+-        wagon = (Wagon) wagonControl.getMock();
++        wagon = mockManager.add( Wagon.class );
+     }
+ 
+     public void testShouldConstructWithNoParamsAndHaveNonNullMessageHolder()
+@@ -83,10 +73,7 @@ public class DefaultDownloadManagerTest
+     {
+         MockManager mockManager = new MockManager();
+ 
+-        MockControl ctl = MockControl.createControl( WagonManager.class );
+-        mockManager.add( ctl );
+-
+-        WagonManager wagonManager = (WagonManager) ctl.getMock();
++        WagonManager wagonManager = mockManager.add( WagonManager.class );
+ 
+         mockManager.replayAll();
+ 
+@@ -105,10 +92,7 @@ public class DefaultDownloadManagerTest
+     {
+         MockManager mockManager = new MockManager();
+ 
+-        MockControl ctl = MockControl.createControl( WagonManager.class );
+-        mockManager.add( ctl );
+-
+-        WagonManager wagonManager = (WagonManager) ctl.getMock();
++        WagonManager wagonManager = mockManager.add( WagonManager.class );
+ 
+         mockManager.replayAll();
+ 
+@@ -178,10 +162,7 @@ public class DefaultDownloadManagerTest
+ 
+         setupDefaultMockConfiguration();
+ 
+-        MockControl transferListenerControl = MockControl.createControl( TransferListener.class );
+-        mockManager.add( transferListenerControl );
+-
+-        TransferListener transferListener = (TransferListener) transferListenerControl.getMock();
++        TransferListener transferListener = mockManager.add( TransferListener.class );
+ 
+         wagon.addTransferListener( transferListener );
+ 
+@@ -378,26 +359,20 @@ public class DefaultDownloadManagerTest
+     {
+         try
+         {
+-            wagonManager.getWagon( "file" );
+-            wagonManagerControl.setReturnValue( wagon );
++            expect( wagonManager.getWagon( "file" ) ).andReturn( wagon );
+         }
+         catch ( UnsupportedProtocolException e )
+         {
+             fail( "This shouldn't happen!!" );
+         }
+ 
+-        wagonManager.getAuthenticationInfo( "" );
+-        wagonManagerControl.setMatcher( MockControl.ALWAYS_MATCHER );
+-        wagonManagerControl.setReturnValue( null );
++        expect( wagonManager.getAuthenticationInfo( anyString() ) ).andReturn( null );
+ 
+-        wagonManager.getProxy( "" );
+-        wagonManagerControl.setMatcher( MockControl.ALWAYS_MATCHER );
+-        wagonManagerControl.setReturnValue( null );
++        expect( wagonManager.getProxy( anyString() ) ).andReturn( null );
+ 
+         try
+         {
+-            wagon.connect( new Repository(), new AuthenticationInfo(), new ProxyInfo() );
+-            wagonControl.setMatcher( MockControl.ALWAYS_MATCHER );
++            wagon.connect( anyObject( Repository.class ), anyObject( AuthenticationInfo.class ), anyObject( ProxyInfo.class ) );
+         }
+         catch ( ConnectionException e )
+         {
+@@ -410,8 +385,7 @@ public class DefaultDownloadManagerTest
+ 
+         try
+         {
+-            wagon.get( "file:///some/path", new File( "." ) );
+-            wagonControl.setMatcher( MockControl.ALWAYS_MATCHER );
++            wagon.get( anyString(), anyObject( File.class ) );
+         }
+         catch ( TransferFailedException e )
+         {
+@@ -441,7 +415,7 @@ public class DefaultDownloadManagerTest
+         try
+         {
+             wagonManager.getWagon( "file" );
+-            wagonManagerControl.setThrowable( error );
++            expectLastCall().andThrow( error );
+         }
+         catch ( UnsupportedProtocolException e )
+         {
+@@ -453,27 +427,21 @@ public class DefaultDownloadManagerTest
+     {
+         try
+         {
+-            wagonManager.getWagon( "file" );
+-            wagonManagerControl.setReturnValue( wagon );
++            expect( wagonManager.getWagon( "file" ) ).andReturn( wagon );
+         }
+         catch ( UnsupportedProtocolException e )
+         {
+             fail( "This shouldn't happen!!" );
+         }
+ 
+-        wagonManager.getAuthenticationInfo( "" );
+-        wagonManagerControl.setMatcher( MockControl.ALWAYS_MATCHER );
+-        wagonManagerControl.setReturnValue( null );
++        expect( wagonManager.getAuthenticationInfo( anyString() ) ).andReturn( null );
+ 
+-        wagonManager.getProxy( "" );
+-        wagonManagerControl.setMatcher( MockControl.ALWAYS_MATCHER );
+-        wagonManagerControl.setReturnValue( null );
++        expect( wagonManager.getProxy( anyString() ) ).andReturn( null );
+ 
+         try
+         {
+-            wagon.connect( new Repository(), new AuthenticationInfo(), new ProxyInfo() );
+-            wagonControl.setMatcher( MockControl.ALWAYS_MATCHER );
+-            wagonControl.setThrowable( error );
++            wagon.connect( anyObject( Repository.class ), anyObject( AuthenticationInfo.class ), anyObject( ProxyInfo.class ) );
++            expectLastCall().andThrow( error );
+         }
+         catch ( ConnectionException e )
+         {
+@@ -489,26 +457,20 @@ public class DefaultDownloadManagerTest
+     {
+         try
+         {
+-            wagonManager.getWagon( "file" );
+-            wagonManagerControl.setReturnValue( wagon );
++            expect( wagonManager.getWagon( "file" ) ).andReturn( wagon );
+         }
+         catch ( UnsupportedProtocolException e )
+         {
+             fail( "This shouldn't happen!!" );
+         }
+ 
+-        wagonManager.getAuthenticationInfo( "" );
+-        wagonManagerControl.setMatcher( MockControl.ALWAYS_MATCHER );
+-        wagonManagerControl.setReturnValue( null );
++        expect( wagonManager.getAuthenticationInfo( anyString() ) ).andReturn( null );
+ 
+-        wagonManager.getProxy( "" );
+-        wagonManagerControl.setMatcher( MockControl.ALWAYS_MATCHER );
+-        wagonManagerControl.setReturnValue( null );
++        expect( wagonManager.getProxy( anyString() ) ).andReturn( null );
+ 
+         try
+         {
+-            wagon.connect( new Repository(), new AuthenticationInfo(), new ProxyInfo() );
+-            wagonControl.setMatcher( MockControl.ALWAYS_MATCHER );
++            wagon.connect( anyObject( Repository.class ), anyObject( AuthenticationInfo.class ), anyObject( ProxyInfo.class ) );
+         }
+         catch ( ConnectionException e )
+         {
+@@ -521,9 +483,8 @@ public class DefaultDownloadManagerTest
+ 
+         try
+         {
+-            wagon.get( "file:///some/path", new File( "." ) );
+-            wagonControl.setMatcher( MockControl.ALWAYS_MATCHER );
+-            wagonControl.setThrowable( error );
++            wagon.get( anyString(), anyObject( File.class ) );
++            expectLastCall().andThrow( error );
+         }
+         catch ( TransferFailedException e )
+         {
+@@ -552,26 +513,20 @@ public class DefaultDownloadManagerTest
+     {
+         try
+         {
+-            wagonManager.getWagon( "file" );
+-            wagonManagerControl.setReturnValue( wagon );
++            expect( wagonManager.getWagon( "file" ) ).andReturn( wagon );
+         }
+         catch ( UnsupportedProtocolException e )
+         {
+             fail( "This shouldn't happen!!" );
+         }
+ 
+-        wagonManager.getAuthenticationInfo( "" );
+-        wagonManagerControl.setMatcher( MockControl.ALWAYS_MATCHER );
+-        wagonManagerControl.setReturnValue( null );
++        expect( wagonManager.getAuthenticationInfo( anyString() ) ).andReturn( null );
+ 
+-        wagonManager.getProxy( "" );
+-        wagonManagerControl.setMatcher( MockControl.ALWAYS_MATCHER );
+-        wagonManagerControl.setReturnValue( null );
++        expect( wagonManager.getProxy( anyString() ) ).andReturn( null );
+ 
+         try
+         {
+-            wagon.connect( new Repository(), new AuthenticationInfo(), new ProxyInfo() );
+-            wagonControl.setMatcher( MockControl.ALWAYS_MATCHER );
++            wagon.connect( anyObject( Repository.class ), anyObject( AuthenticationInfo.class ), anyObject( ProxyInfo.class ) );
+         }
+         catch ( ConnectionException e )
+         {
+@@ -584,8 +539,7 @@ public class DefaultDownloadManagerTest
+ 
+         try
+         {
+-            wagon.get( "file:///some/path", new File( "." ) );
+-            wagonControl.setMatcher( MockControl.ALWAYS_MATCHER );
++            wagon.get( anyString(), anyObject( File.class ) );
+         }
+         catch ( TransferFailedException e )
+         {
+@@ -603,7 +557,7 @@ public class DefaultDownloadManagerTest
+         try
+         {
+             wagon.disconnect();
+-            wagonControl.setThrowable( error );
++            expectLastCall().andThrow( error );
+         }
+         catch ( ConnectionException e )
+         {
+diff --git a/src/test/java/org/apache/maven/shared/io/location/ArtifactLocatorStrategyTest.java b/src/test/java/org/apache/maven/shared/io/location/ArtifactLocatorStrategyTest.java
+index 7a8609f..ba45e17 100644
+--- a/src/test/java/org/apache/maven/shared/io/location/ArtifactLocatorStrategyTest.java
++++ b/src/test/java/org/apache/maven/shared/io/location/ArtifactLocatorStrategyTest.java
+@@ -34,7 +34,7 @@ import org.apache.maven.artifact.resolver.ArtifactResolver;
+ import org.apache.maven.shared.io.MockManager;
+ import org.apache.maven.shared.io.logging.DefaultMessageHolder;
+ import org.apache.maven.shared.io.logging.MessageHolder;
+-import org.easymock.MockControl;
++import static org.easymock.EasyMock.*;
+ 
+ public class ArtifactLocatorStrategyTest
+     extends TestCase
+@@ -42,34 +42,19 @@ public class ArtifactLocatorStrategyTest
+ 
+     private MockManager mockManager = new MockManager();
+ 
+-    private MockControl factoryControl;
+-
+     private ArtifactFactory factory;
+ 
+-    private MockControl resolverControl;
+-
+     private ArtifactResolver resolver;
+ 
+-    private MockControl localRepositoryControl;
+-
+     private ArtifactRepository localRepository;
+ 
+     public void setUp()
+     {
+-        factoryControl = MockControl.createControl( ArtifactFactory.class );
+-        mockManager.add( factoryControl );
+-
+-        factory = (ArtifactFactory) factoryControl.getMock();
++        factory = mockManager.add( ArtifactFactory.class );
+ 
+-        resolverControl = MockControl.createControl( ArtifactResolver.class );
+-        mockManager.add( resolverControl );
++        resolver = mockManager.add( ArtifactResolver.class );
+ 
+-        resolver = (ArtifactResolver) resolverControl.getMock();
+-
+-        localRepositoryControl = MockControl.createControl( ArtifactRepository.class );
+-        mockManager.add( localRepositoryControl );
+-
+-        localRepository = (ArtifactRepository) localRepositoryControl.getMock();
++        localRepository = mockManager.add( ArtifactRepository.class );
+     }
+ 
+     public void testShouldConstructWithoutDefaultArtifactType()
+@@ -128,17 +113,10 @@ public class ArtifactLocatorStrategyTest
+         File tempFile = File.createTempFile( "artifact-location.", ".temp" );
+         tempFile.deleteOnExit();
+ 
+-        MockControl artifactControl = MockControl.createControl( Artifact.class );
+-        mockManager.add( artifactControl );
++        Artifact artifact = mockManager.add( Artifact.class );
++        expect( artifact.getFile() ).andReturn( tempFile ).times( 2 );
+ 
+-        Artifact artifact = (Artifact) artifactControl.getMock();
+-        artifact.getFile();
+-        artifactControl.setReturnValue( tempFile );
+-        artifact.getFile();
+-        artifactControl.setReturnValue( tempFile );
+-
+-        factory.createArtifact( "group", "artifact", "version", null, "jar" );
+-        factoryControl.setReturnValue( artifact );
++        expect( factory.createArtifact( "group", "artifact", "version", null, "jar" ) ).andReturn( artifact );
+ 
+         try
+         {
+@@ -177,17 +155,10 @@ public class ArtifactLocatorStrategyTest
+         File tempFile = File.createTempFile( "artifact-location.", ".temp" );
+         tempFile.deleteOnExit();
+ 
+-        MockControl artifactControl = MockControl.createControl( Artifact.class );
+-        mockManager.add( artifactControl );
+-
+-        Artifact artifact = (Artifact) artifactControl.getMock();
+-        artifact.getFile();
+-        artifactControl.setReturnValue( tempFile );
+-        artifact.getFile();
+-        artifactControl.setReturnValue( tempFile );
++        Artifact artifact = mockManager.add( Artifact.class );
++        expect( artifact.getFile() ).andReturn( tempFile ).times( 2 );
+ 
+-        factory.createArtifact( "group", "artifact", "version", null, "zip" );
+-        factoryControl.setReturnValue( artifact );
++        expect( factory.createArtifact( "group", "artifact", "version", null, "zip" ) ).andReturn( artifact );
+ 
+         try
+         {
+@@ -226,17 +197,10 @@ public class ArtifactLocatorStrategyTest
+         File tempFile = File.createTempFile( "artifact-location.", ".temp" );
+         tempFile.deleteOnExit();
+ 
+-        MockControl artifactControl = MockControl.createControl( Artifact.class );
+-        mockManager.add( artifactControl );
++        Artifact artifact = mockManager.add( Artifact.class );
++        expect( artifact.getFile() ).andReturn( tempFile ).times( 2 );
+ 
+-        Artifact artifact = (Artifact) artifactControl.getMock();
+-        artifact.getFile();
+-        artifactControl.setReturnValue( tempFile );
+-        artifact.getFile();
+-        artifactControl.setReturnValue( tempFile );
+-
+-        factory.createArtifact( "group", "artifact", "version", null, "zip" );
+-        factoryControl.setReturnValue( artifact );
++        expect( factory.createArtifact( "group", "artifact", "version", null, "zip" ) ).andReturn( artifact );
+ 
+         try
+         {
+@@ -275,17 +239,10 @@ public class ArtifactLocatorStrategyTest
+         File tempFile = File.createTempFile( "artifact-location.", ".temp" );
+         tempFile.deleteOnExit();
+ 
+-        MockControl artifactControl = MockControl.createControl( Artifact.class );
+-        mockManager.add( artifactControl );
+-
+-        Artifact artifact = (Artifact) artifactControl.getMock();
+-        artifact.getFile();
+-        artifactControl.setReturnValue( tempFile );
+-        artifact.getFile();
+-        artifactControl.setReturnValue( tempFile );
++        Artifact artifact = mockManager.add( Artifact.class );
++        expect( artifact.getFile() ).andReturn( tempFile ).times( 2 );
+ 
+-        factory.createArtifactWithClassifier( "group", "artifact", "version", "zip", "classifier" );
+-        factoryControl.setReturnValue( artifact );
++        expect( factory.createArtifactWithClassifier( "group", "artifact", "version", "zip", "classifier" ) ).andReturn( artifact );
+ 
+         try
+         {
+@@ -324,17 +281,10 @@ public class ArtifactLocatorStrategyTest
+         File tempFile = File.createTempFile( "artifact-location.", ".temp" );
+         tempFile.deleteOnExit();
+ 
+-        MockControl artifactControl = MockControl.createControl( Artifact.class );
+-        mockManager.add( artifactControl );
++        Artifact artifact = mockManager.add( Artifact.class );
++        expect( artifact.getFile() ).andReturn( tempFile ).times( 2 );
+ 
+-        Artifact artifact = (Artifact) artifactControl.getMock();
+-        artifact.getFile();
+-        artifactControl.setReturnValue( tempFile );
+-        artifact.getFile();
+-        artifactControl.setReturnValue( tempFile );
+-
+-        factory.createArtifactWithClassifier( "group", "artifact", "version", "jar", "classifier" );
+-        factoryControl.setReturnValue( artifact );
++        expect( factory.createArtifactWithClassifier( "group", "artifact", "version", "jar", "classifier" ) ).andReturn( artifact );
+ 
+         try
+         {
+@@ -373,17 +323,10 @@ public class ArtifactLocatorStrategyTest
+         File tempFile = File.createTempFile( "artifact-location.", ".temp" );
+         tempFile.deleteOnExit();
+ 
+-        MockControl artifactControl = MockControl.createControl( Artifact.class );
+-        mockManager.add( artifactControl );
+-
+-        Artifact artifact = (Artifact) artifactControl.getMock();
+-        artifact.getFile();
+-        artifactControl.setReturnValue( tempFile );
+-        artifact.getFile();
+-        artifactControl.setReturnValue( tempFile );
++        Artifact artifact = mockManager.add( Artifact.class );
++        expect( artifact.getFile() ).andReturn( tempFile ).times( 2 );
+ 
+-        factory.createArtifactWithClassifier( "group", "artifact", "version", "zip", "classifier" );
+-        factoryControl.setReturnValue( artifact );
++        expect( factory.createArtifactWithClassifier( "group", "artifact", "version", "zip", "classifier" ) ).andReturn( artifact );
+ 
+         try
+         {
+@@ -421,17 +364,11 @@ public class ArtifactLocatorStrategyTest
+     public void testShouldNotResolveSpecToArtifactWithNullFile()
+         throws IOException
+     {
+-        MockControl artifactControl = MockControl.createControl( Artifact.class );
+-        mockManager.add( artifactControl );
++        Artifact artifact = mockManager.add( Artifact.class );
++        expect( artifact.getFile() ).andReturn( null );
++        expect( artifact.getId() ).andReturn( "<some-artifact-id>" );
+ 
+-        Artifact artifact = (Artifact) artifactControl.getMock();
+-        artifact.getFile();
+-        artifactControl.setReturnValue( null );
+-        artifact.getId();
+-        artifactControl.setReturnValue( "<some-artifact-id>" );
+-
+-        factory.createArtifact( "group", "artifact", "version", null, "jar" );
+-        factoryControl.setReturnValue( artifact );
++        expect( factory.createArtifact( "group", "artifact", "version", null, "jar" ) ).andReturn( artifact );
+ 
+         try
+         {
+@@ -467,24 +404,19 @@ public class ArtifactLocatorStrategyTest
+     public void testShouldNotResolveWhenArtifactNotFoundExceptionThrown()
+         throws IOException
+     {
+-        MockControl artifactControl = MockControl.createControl( Artifact.class );
+-        mockManager.add( artifactControl );
+-
+-        Artifact artifact = (Artifact) artifactControl.getMock();
++        Artifact artifact = mockManager.add( Artifact.class );
+ 
+-        artifact.getId();
+-        artifactControl.setReturnValue( "<some-artifact-id>" );
++        expect( artifact.getId() ).andReturn( "<some-artifact-id>" );
+ 
+-        factory.createArtifact( "group", "artifact", "version", null, "jar" );
+-        factoryControl.setReturnValue( artifact );
++        expect( factory.createArtifact( "group", "artifact", "version", null, "jar" ) ).andReturn( artifact );
+ 
+         try
+         {
+             resolver.resolve( artifact, Collections.EMPTY_LIST, localRepository );
+-            resolverControl.setThrowable( new ArtifactNotFoundException( "not found", "group", "artifact", "version",
+-                                                                         "jar", Collections.EMPTY_LIST,
+-                                                                         "http://nowhere.com", Collections.EMPTY_LIST,
+-                                                                         new NullPointerException() ) );
++            expectLastCall().andThrow( new ArtifactNotFoundException( "not found", "group", "artifact", "version",
++                                                                      "jar", Collections.EMPTY_LIST,
++                                                                      "http://nowhere.com", Collections.EMPTY_LIST,
++                                                                       new NullPointerException() ) );
+         }
+         catch ( ArtifactResolutionException e )
+         {
+@@ -517,24 +449,19 @@ public class ArtifactLocatorStrategyTest
+     public void testShouldNotResolveWhenArtifactResolutionExceptionThrown()
+         throws IOException
+     {
+-        MockControl artifactControl = MockControl.createControl( Artifact.class );
+-        mockManager.add( artifactControl );
+-
+-        Artifact artifact = (Artifact) artifactControl.getMock();
++        Artifact artifact = mockManager.add( Artifact.class );
+ 
+-        artifact.getId();
+-        artifactControl.setReturnValue( "<some-artifact-id>" );
++        expect( artifact.getId() ).andReturn( "<some-artifact-id>" );
+ 
+-        factory.createArtifact( "group", "artifact", "version", null, "jar" );
+-        factoryControl.setReturnValue( artifact );
++        expect( factory.createArtifact( "group", "artifact", "version", null, "jar" ) ).andReturn( artifact );
+ 
+         try
+         {
+             resolver.resolve( artifact, Collections.EMPTY_LIST, localRepository );
+-            resolverControl.setThrowable( new ArtifactResolutionException( "resolution failed", "group", "artifact",
+-                                                                           "version", "jar", Collections.EMPTY_LIST,
+-                                                                           Collections.EMPTY_LIST,
+-                                                                           new NullPointerException() ) );
++            expectLastCall().andThrow( new ArtifactResolutionException( "resolution failed", "group", "artifact",
++                                                                        "version", "jar", Collections.EMPTY_LIST,
++                                                                        Collections.EMPTY_LIST,
++                                                                        new NullPointerException() ) );
+         }
+         catch ( ArtifactResolutionException e )
+         {
+diff --git a/src/test/java/org/apache/maven/shared/io/location/LocatorTest.java b/src/test/java/org/apache/maven/shared/io/location/LocatorTest.java
+index 34040ee..86b247c 100644
+--- a/src/test/java/org/apache/maven/shared/io/location/LocatorTest.java
++++ b/src/test/java/org/apache/maven/shared/io/location/LocatorTest.java
+@@ -26,7 +26,6 @@ import java.util.List;
+ import org.apache.maven.shared.io.MockManager;
+ import org.apache.maven.shared.io.logging.DefaultMessageHolder;
+ import org.apache.maven.shared.io.logging.MessageHolder;
+-import org.easymock.MockControl;
+ 
+ import junit.framework.TestCase;
+ 
+@@ -63,17 +62,9 @@ public class LocatorTest
+     {
+         MockManager mgr = new MockManager();
+ 
+-        MockControl originalStrategyControl = MockControl.createControl( LocatorStrategy.class );
++        LocatorStrategy originalStrategy = mgr.add( LocatorStrategy.class );
+ 
+-        mgr.add( originalStrategyControl );
+-
+-        LocatorStrategy originalStrategy = (LocatorStrategy) originalStrategyControl.getMock();
+-
+-        MockControl replacementStrategyControl = MockControl.createControl( LocatorStrategy.class );
+-
+-        mgr.add( replacementStrategyControl );
+-
+-        LocatorStrategy replacementStrategy = (LocatorStrategy) replacementStrategyControl.getMock();
++        LocatorStrategy replacementStrategy = mgr.add( LocatorStrategy.class );
+ 
+         mgr.replayAll();
+ 
+@@ -94,11 +85,7 @@ public class LocatorTest
+     {
+         MockManager mgr = new MockManager();
+ 
+-        MockControl originalStrategyControl = MockControl.createControl( LocatorStrategy.class );
+-
+-        mgr.add( originalStrategyControl );
+-
+-        LocatorStrategy originalStrategy = (LocatorStrategy) originalStrategyControl.getMock();
++        LocatorStrategy originalStrategy = mgr.add( LocatorStrategy.class );
+ 
+         mgr.replayAll();
+ 
+-- 
+1.8.3.1
+
