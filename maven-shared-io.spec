@@ -4,7 +4,7 @@ Version:        1.1
 Release:        7.1%{?dist}
 # Maven-shared defines maven-shared-io version as 1.2
 Epoch:          1
-Summary:        API for I/O support like logging, download or file scanning.
+Summary:        API for I/O support like logging, download or file scanning
 License:        ASL 2.0
 URL:            http://maven.apache.org/shared/maven-shared-io
 # svn export http://svn.apache.org/repos/asf/maven/shared/tags/maven-shared-io-1.1 maven-shared-io-1.1
