@@ -1,7 +1,7 @@
-%_javapackages_macros
+%{?_javapackages_macros:%_javapackages_macros}
 Name:           maven-shared-io
 Version:        1.1
-Release:        7.0%{?dist}
+Release:        7.1%{?dist}
 # Maven-shared defines maven-shared-io version as 1.2
 Epoch:          1
 Summary:        API for I/O support like logging, download or file scanning.
