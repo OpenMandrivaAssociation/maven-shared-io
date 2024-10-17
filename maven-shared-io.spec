@@ -6,7 +6,7 @@ Release:        7.1%{?dist}
 Epoch:          1
 Summary:        API for I/O support like logging, download or file scanning
 License:        ASL 2.0
-URL:            http://maven.apache.org/shared/maven-shared-io
+URL:            https://maven.apache.org/shared/maven-shared-io
 # svn export http://svn.apache.org/repos/asf/maven/shared/tags/maven-shared-io-1.1 maven-shared-io-1.1
 # tar caf maven-shared-io-1.1.tar.xz maven-shared-io-1.1/
 Source0:        %{name}-%{version}.tar.xz
