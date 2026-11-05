@@ -10,6 +10,9 @@ URL:            https://maven.apache.org/shared/maven-shared-io
 Source0:        https://github.com/apache/maven-shared-io/archive/refs/tags/maven-shared-io-%{version}.tar.gz
 Source1:        https://www.apache.org/licenses/LICENSE-2.0.txt
 BuildArch:      noarch
+# Literal, so the first rpmbuild -bs records them before sysjar is installed.
+BuildRequires:	maven
+BuildRequires:	java-current-devel
 BuildSystem:	maven
 
 BuildRequires:  maven-shared
