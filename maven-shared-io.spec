@@ -5,6 +5,7 @@ Release:        1
 # Maven-shared defines maven-shared-io version as 1.2
 Epoch:          1
 Summary:        API for I/O support like logging, download or file scanning
+Group:          Development/Java
 License:        ASL 2.0
 URL:            https://maven.apache.org/shared/maven-shared-io
 Source0:        https://github.com/apache/maven-shared-io/archive/refs/tags/maven-shared-io-%{version}.tar.gz
@@ -16,6 +17,8 @@ BuildRequires:	java-current-devel
 BuildSystem:	maven
 
 BuildRequires:  maven-shared
+BuildRequires:  maven-components
+BuildRequires:  maven-wagon
 
 Obsoletes:      maven-shared-io < %{epoch}:%{version}-%{release}
 Provides:       maven-shared-io = %{epoch}:%{version}-%{release}
