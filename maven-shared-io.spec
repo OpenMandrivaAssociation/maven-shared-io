@@ -20,6 +20,9 @@ BuildSystem:	maven
 
 BuildRequires:  maven-shared
 BuildRequires:  maven-components
+BuildRequires:	mvn(com.google.inject:guice-parent:pom::)
+BuildRequires:	mvn(org.slf4j:slf4j-parent:pom::)
+BuildRequires:	mvn(org.codehaus.plexus:plexus-containers:pom::)
 BuildRequires:  maven-wagon
 
 Obsoletes:      maven-shared-io < %{epoch}:%{version}-%{release}
